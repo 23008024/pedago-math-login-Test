@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedago Math: Login System (Flutter + Firebase)</title>
+<meta name="description" content="A Flutter login screen with Firebase Authentication, input validation, Remember Me and automated tests. Work in progress.">
+<meta name="color-scheme" content="light">
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #172033;
+    --muted: #596275;
+    --line: #e3e7ee;
+    --soft: #f5f7fa;
+    --accent: #0b5fd4;
+    --accent-soft: #e8f0fc;
+    --ok: #17794a;
+    --ok-soft: #e6f4ec;
+    --warn: #a24d06;
+    --warn-soft: #fdf1e3;
+    --bad: #b42318;
+    --bad-soft: #fdecea;
+    --radius: 10px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 1rem/1.65 var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--soft); padding: 0.1em 0.4em; border-radius: 5px; border: 1px solid var(--line); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  /* Layout */
+  .shell { max-width: 1120px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 56px; }
+  .side { position: sticky; top: 0; align-self: start; padding: 40px 0; }
+  .side .brand { font-weight: 650; letter-spacing: -0.01em; margin-bottom: 20px; }
+  .side nav { display: flex; flex-direction: column; gap: 2px; }
+  .side a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-left: 2px solid var(--line); font-size: 0.95rem; }
+  .side a:hover { color: var(--ink); }
+  .side a[aria-current="true"] { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  main { padding: 40px 0 96px; min-width: 0; }
+  section { padding: 56px 0 8px; }
+  section + section { border-top: 1px solid var(--line); margin-top: 48px; }
+  h1, h2, h3 { letter-spacing: -0.02em; line-height: 1.15; margin: 0; }
+  h1 { font-size: clamp(2rem, 4.4vw, 3.1rem); font-weight: 700; }
+  h2 { font-size: 1.65rem; font-weight: 650; margin-bottom: 14px; }
+  h3 { font-size: 1.1rem; font-weight: 650; margin: 28px 0 8px; }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  .lede { font-size: 1.15rem; color: var(--muted); max-width: 52ch; margin-top: 18px; }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: start; padding-top: 8px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 0.88rem; background: #fff; }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .pill.wip i { background: #d98a1f; }
+
+  /* Demo card */
+  .demo { border: 1px solid var(--line); border-radius: 14px; padding: 22px; background: #fff; box-shadow: 0 1px 0 rgba(23,32,51,0.04), 0 12px 32px -18px rgba(23,32,51,0.25); }
+  .demo h2 { font-size: 1.15rem; margin-bottom: 4px; }
+  .demo .sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 16px; }
+  label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+  .field { margin-bottom: 14px; }
+  .input-wrap { position: relative; }
+  input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #c7cdd8; border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  input[aria-invalid="true"] { border-color: var(--bad); }
+  .toggle-pw { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 0.85rem; padding: 4px 8px; cursor: pointer; }
+  .err { color: var(--bad); font-size: 0.85rem; min-height: 1.2em; margin-top: 4px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 16px; font-size: 0.9rem; }
+  .check { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; margin: 0; cursor: pointer; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .linkbtn { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+  .btn { width: 100%; font: inherit; font-weight: 600; padding: 11px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  .btn:hover { background: #0a54bd; }
+  .rules { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; font-size: 0.86rem; color: var(--muted); }
+  .rules li { display: flex; align-items: center; gap: 8px; }
+  .rules .mark { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #b8c0cd; flex: none; display: inline-grid; place-items: center; font-size: 10px; line-height: 1; color: #fff; }
+  .rules li.pass { color: var(--ink); }
+  .rules li.pass .mark { background: var(--ok); border-color: var(--ok); }
+  .rules li.pass .mark::after { content: "\2713"; }
+  .notice { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 0.88rem; display: none; }
+  .notice.show { display: block; }
+  .notice.ok { background: var(--ok-soft); color: #0f5a37; }
+  .notice.info { background: var(--accent-soft); color: #0a3f8f; }
+  .notice.bad { background: var(--bad-soft); color: var(--bad); }
+  .fine { color: var(--muted); font-size: 0.8rem; margin-top: 12px; }
+
+  /* Lists and blocks */
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 32px; max-width: 760px; }
+  ul.plain { margin: 0 0 14px; padding-left: 1.2em; }
+  ul.plain li { margin: 4px 0; }
+  dl.stack { margin: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); border-top: 1px solid var(--line); max-width: 760px; }
+  dl.stack dt, dl.stack dd { margin: 0; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  dl.stack dt { font-weight: 650; }
+  dl.stack dd { color: var(--muted); }
+  .note { background: var(--accent-soft); border-radius: var(--radius); padding: 12px 16px; max-width: 68ch; font-size: 0.95rem; }
+
+  /* Flow tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 14px; }
+  .tab { font: inherit; font-size: 0.95rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .panel { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; max-width: 760px; background: var(--soft); }
+  .panel p:last-child { margin-bottom: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 4px 0 12px; background: #fff; }
+  .seg button { font: inherit; font-size: 0.9rem; padding: 6px 14px; border: 0; background: #fff; cursor: pointer; color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .stepnav { display: flex; gap: 8px; margin-top: 14px; }
+  .stepnav button { font: inherit; font-size: 0.9rem; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .stepnav button:disabled { opacity: 0.4; cursor: default; }
+
+  /* Storage inspector */
+  .switch { display: inline-flex; align-items: center; gap: 12px; font-weight: 600; cursor: pointer; margin: 0 0 14px; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch .track { width: 42px; height: 24px; background: #c7cdd8; border-radius: 999px; position: relative; transition: background 0.15s; flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(18px); }
+  .switch input:focus-visible + .track { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .inspector { border: 1px solid var(--line); border-radius: var(--radius); max-width: 560px; overflow: hidden; }
+  .inspector div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
+  .inspector div:last-child { border-bottom: 0; }
+  .inspector span:first-child { color: var(--muted); }
+  .inspector .v { font-family: var(--mono); font-size: 0.88rem; text-align: right; overflow-wrap: anywhere; }
+  .inspector .never { color: var(--ok); font-weight: 600; }
+
+  /* Testing */
+  .cmd { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ink); color: #fff; border-radius: var(--radius); padding: 12px 14px 12px 18px; max-width: 480px; font-family: var(--mono); }
+  .cmd button { font: 0.85rem var(--font); border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #fff; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .result { color: #9be3bd; font-family: var(--mono); font-size: 0.9rem; max-width: 480px; margin: 8px 0 18px; }
+  table { border-collapse: collapse; width: 100%; max-width: 760px; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 650; background: var(--soft); }
+  .tag { display: inline-block; font-size: 0.8rem; padding: 2px 9px; border-radius: 999px; font-weight: 600; }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.next { background: var(--warn-soft); color: var(--warn); }
+
+  /* Status */
+  .meter { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; max-width: 760px; margin: 6px 0 4px; }
+  .meter span { display: block; height: 100%; background: var(--ok); width: 0; transition: width 0.4s ease; }
+  .count { color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
+  .items { list-style: none; padding: 0; margin: 14px 0 0; max-width: 760px; border-top: 1px solid var(--line); }
+  .items li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .items li[hidden] { display: none; }
+  .items .tag { margin-top: 2px; flex: none; }
+
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+
+  @media (max-width: 980px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .side { position: sticky; top: 0; z-index: 5; background: #fff; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .side .brand { display: none; }
+    .side nav { flex-direction: row; overflow-x: auto; gap: 4px; }
+    .side a { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .side a[aria-current="true"] { border-bottom-color: var(--accent); }
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    dl.stack { grid-template-columns: 1fr; }
+    dl.stack dt { border-bottom: 0; padding-bottom: 0; }
+    html { scroll-padding-top: 64px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">Pedago Math</div>
+    <nav aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#stack">Technologies</a>
+      <a href="#screen">Login screen</a>
+      <a href="#validation">Validation</a>
+      <a href="#auth">Authentication</a>
+      <a href="#remember">Remember Me</a>
+      <a href="#errors">Error handling</a>
+      <a href="#testing">Testing</a>
+      <a href="#status">Status</a>
+    </nav>
+  </aside>
+
+  <main>
+    <section id="overview" style="padding-top:0; border-top:0; margin-top:0;">
+      <div class="hero">
+        <div>
+          <h1>Pedago Math login system</h1>
+          <p class="lede">A Flutter login screen that signs registered users in with Firebase Authentication, validates input before it reaches the server, and remembers an email address without ever storing the password.</p>
+          <div class="pills">
+            <span class="pill"><i></i>Firebase sign-in connected</span>
+            <span class="pill"><i></i>2 automated tests passing</span>
+            <span class="pill"><i></i>Manually tested</span>
+            <span class="pill wip"><i></i>Work in progress</span>
+          </div>
+          <p style="margin-top:28px">Registered users enter their email address and password. Firebase Authentication verifies the credentials and reports authentication errors back to the screen. The form on the right applies the same validation rules as the app, so you can try them yourself.</p>
+        </div>
+
+        <div class="demo" aria-labelledby="demo-title">
+          <h2 id="demo-title">Try the validation</h2>
+          <p class="sub">A browser demo of the app's input rules. No account or server is involved.</p>
+          <div id="demoForm" novalidate>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" type="email" autocomplete="off" inputmode="email" aria-describedby="emailErr">
+              <div class="err" id="emailErr" aria-live="polite"></div>
+            </div>
+            <div class="field">
+              <label for="pw">Password</label>
+              <div class="input-wrap">
+                <input id="pw" type="password" autocomplete="off" aria-describedby="pwErr">
+                <button type="button" class="toggle-pw" id="togglePw" aria-pressed="false">Show</button>
+              </div>
+              <div class="err" id="pwErr" aria-live="polite"></div>
+            </div>
+            <div class="row">
+              <label class="check"><input type="checkbox" id="rememberHero"> Remember me</label>
+              <button type="button" class="linkbtn" id="forgot">Forgot password?</button>
+            </div>
+            <button type="button" class="btn" id="login">Log in</button>
+          </div>
+          <ul class="rules" id="rules" aria-label="Validation rules">
+            <li data-rule="emailFilled"><span class="mark"></span>Email is not empty</li>
+            <li data-rule="emailFormat"><span class="mark"></span>Email has a valid format</li>
+            <li data-rule="pwFilled"><span class="mark"></span>Password is not empty</li>
+            <li data-rule="pwLen"><span class="mark"></span>Password has at least 8 characters</li>
+          </ul>
+          <div class="notice" id="notice" role="status"></div>
+          <p class="fine">Message wording here is illustrative. Remember me stores only the email in this browser.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack">
+      <h2>Technologies</h2>
+      <dl class="stack">
+        <dt>Flutter</dt><dd>Builds the application's user interface.</dd>
+        <dt>Dart</dt><dd>Programming language used to implement the login functionality.</dd>
+        <dt>Firebase Authentication</dt><dd>Authenticates users with email and password.</dd>
+        <dt>SharedPreferences</dt><dd>Stores the Remember Me preference and the saved email address.</dd>
+        <dt>Flutter Test</dt><dd>Runs automated tests that verify the login screen's behavior.</dd>
+      </dl>
+    </section>
+
+    <section id="screen">
+      <h2>Login screen</h2>
+      <p>The screen lives in <code>lib/screens/login_screen.dart</code> and uses Flutter's <code>Form</code> and <code>TextFormField</code> widgets to collect and validate input.</p>
+      <div class="cols">
+        <ul class="plain">
+          <li>Email input field</li>
+          <li>Password input field</li>
+          <li>Password visibility toggle</li>
+          <li>Remember Me checkbox</li>
+        </ul>
+        <ul class="plain">
+          <li>Forgot Password option</li>
+          <li>Login button</li>
+          <li>Registration navigation link</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="validation">
+      <h2>Input validation</h2>
+      <p>Credentials are checked before any authentication attempt. If a check fails, the app shows a message and does not call Firebase.</p>
+      <table>
+        <thead><tr><th>Field</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>Email</td><td>Must not be empty, and must follow the expected email address format.</td></tr>
+          <tr><td>Password</td><td>Must not be empty, and must contain at least eight characters.</td></tr>
+        </tbody>
+      </table>
+      <p class="note" style="margin-top:16px">These checks only validate format. Firebase Authentication decides whether the credentials belong to a valid account.</p>
+    </section>
+
+    <section id="auth">
+      <h2>Firebase Authentication</h2>
+      <p>Sign-in uses Firebase Authentication's <code>signInWithEmailAndPassword()</code>. Select a stage to see what happens.</p>
+      <div class="tabs" role="tablist" aria-label="Login flow stages" id="flowTabs"></div>
+      <div class="panel" id="flowPanel" role="tabpanel" tabindex="0"></div>
+      <div class="stepnav">
+        <button type="button" id="prevStep">Previous</button>
+        <button type="button" id="nextStep">Next</button>
+      </div>
+    </section>
+
+    <section id="remember">
+      <h2>Remember Me</h2>
+      <p>The app uses the <code>shared_preferences</code> package. When the option is on, the preference and the email address are saved locally and the email is restored the next time the screen opens. When it is off, the saved email is removed and the preference is reset.</p>
+      <label class="switch">
+        <input type="checkbox" id="rememberSection">
+        <span class="track" aria-hidden="true"></span>
+        Remember Me
+      </label>
+      <div class="inspector" aria-live="polite">
+        <div><span>Preference</span><span class="v" id="insPref">off</span></div>
+        <div><span>Saved email</span><span class="v" id="insEmail">none</span></div>
+        <div><span>Password</span><span class="v never">never saved</span></div>
+      </div>
+      <p class="fine" style="margin-top:10px">Linked to the demo at the top. Turn it on, enter a valid email and password, then press Log in to see the email saved. The password is never written.</p>
+    </section>
+
+    <section id="errors">
+      <h2>Error handling</h2>
+      <p>Authentication failures are handled with exception handling, and the user gets feedback when credentials are incorrect or something goes wrong. The login screen covers these Firebase cases:</p>
+      <ul class="plain">
+        <li>Invalid credentials</li>
+        <li>Invalid email address</li>
+        <li>Disabled account</li>
+        <li>Too many login attempts</li>
+      </ul>
+      <p>After any asynchronous call, the screen checks that it is still active before updating the interface, which avoids updating a screen that has already closed.</p>
+    </section>
+
+    <section id="testing">
+      <h2>Testing</h2>
+      <div class="cmd"><span id="cmdText">flutter test</span><button type="button" id="copyCmd">Copy</button></div>
+      <div class="result">All tests passed!</div>
+      <table>
+        <thead><tr><th>Check</th><th>Type</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Main login screen elements are displayed</td><td>Automated</td><td><span class="tag ok">Passing</span></td></tr>
+          <tr><td>Empty email field is rejected</td><td>Automated</td><td><span class="tag ok">Passing</span></td></tr>
+          <tr><td>Valid credentials</td><td>Manual</td><td><span class="tag ok">Verified</span></td></tr>
+          <tr><td>Incorrect password</td><td>Manual</td><td><span class="tag ok">Verified</span></td></tr>
+          <tr><td>Unregistered email address</td><td>Manual</td><td><span class="tag ok">Verified</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="status">
+      <h2>Current status</h2>
+      <p>The login screen is connected to Firebase Authentication and manually tested. It currently shows a success message after sign-in.</p>
+      <div class="meter" aria-hidden="true"><span id="meterFill"></span></div>
+      <div class="count" id="count"></div>
+      <div class="seg" role="group" aria-label="Filter status items">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="done" aria-pressed="false">Done</button>
+        <button type="button" data-filter="next" aria-pressed="false">Next</button>
+      </div>
+      <ul class="items" id="items">
+        <li data-s="done"><span class="tag ok">Done</span>Login screen with email, password, visibility toggle, Remember Me, Forgot Password option and registration link</li>
+        <li data-s="done"><span class="tag ok">Done</span>Input validation for email and password</li>
+        <li data-s="done"><span class="tag ok">Done</span>Firebase email and password sign-in</li>
+        <li data-s="done"><span class="tag ok">Done</span>Error handling for invalid credentials, invalid email, disabled accounts and too many attempts</li>
+        <li data-s="done"><span class="tag ok">Done</span>Remember Me with SharedPreferences, saving the email only</li>
+        <li data-s="done"><span class="tag ok">Done</span>Two automated tests passing, plus manual authentication testing</li>
+        <li data-s="next"><span class="tag next">Next</span>Navigate to the home screen after a successful login</li>
+        <li data-s="next"><span class="tag next">Next</span>Connect Forgot Password to Firebase password reset</li>
+        <li data-s="next"><span class="tag next">Next</span>Expand the automated authentication tests</li>
+      </ul>
+    </section>
+
+    <footer>
+      The Pedago Math login system provides input validation, Firebase-based authentication, error handling and local email preference storage. Improvements planned: home screen navigation, password reset and broader automated tests.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  /* ---------- Storage (email only, never the password) ---------- */
+  var KEY = "pedago_demo_email";
+  var memory = null;
+  function getSaved() {
+    try { return localStorage.getItem(KEY); } catch (e) { return memory; }
+  }
+  function setSaved(v) {
+    try { localStorage.setItem(KEY, v); } catch (e) { memory = v; }
+  }
+  function clearSaved() {
+    try { localStorage.removeItem(KEY); } catch (e) { memory = null; }
+  }
+
+  /* ---------- Demo form ---------- */
+  var email = $("#email"), pw = $("#pw");
+  var emailErr = $("#emailErr"), pwErr = $("#pwErr");
+  var notice = $("#notice");
+  var heroRemember = $("#rememberHero"), secRemember = $("#rememberSection");
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function state() {
+    var e = email.value.trim(), p = pw.value;
+    return {
+      emailFilled: e.length > 0,
+      emailFormat: EMAIL_RE.test(e),
+      pwFilled: p.length > 0,
+      pwLen: p.length >= 8
+    };
+  }
+  function renderRules() {
+    var s = state();
+    $$("#rules li").forEach(function (li) {
+      li.classList.toggle("pass", !!s[li.dataset.rule]);
+    });
+  }
+  function showNotice(kind, text) {
+    notice.className = "notice show " + kind;
+    notice.textContent = text;
+  }
+  function clearNotice() { notice.className = "notice"; notice.textContent = ""; }
+
+  function submit() {
+    var s = state();
+    var eMsg = "", pMsg = "";
+    if (!s.emailFilled) eMsg = "Enter your email address.";
+    else if (!s.emailFormat) eMsg = "Enter a valid email address.";
+    if (!s.pwFilled) pMsg = "Enter your password.";
+    else if (!s.pwLen) pMsg = "Password must be at least 8 characters.";
+    emailErr.textContent = eMsg; pwErr.textContent = pMsg;
+    email.setAttribute("aria-invalid", eMsg ? "true" : "false");
+    pw.setAttribute("aria-invalid", pMsg ? "true" : "false");
+    if (eMsg || pMsg) {
+      showNotice("bad", "Validation failed. In the app, Firebase is not called.");
+      return;
+    }
+    if (heroRemember.checked) setSaved(email.value.trim()); else clearSaved();
+    renderInspector();
+    showNotice("ok", "Passed validation. In the app, signInWithEmailAndPassword() runs next and Firebase decides whether the account is valid.");
+  }
+
+  email.addEventListener("input", function () { renderRules(); emailErr.textContent = ""; email.setAttribute("aria-invalid", "false"); clearNotice(); });
+  pw.addEventListener("input", function () { renderRules(); pwErr.textContent = ""; pw.setAttribute("aria-invalid", "false"); clearNotice(); });
+  $("#login").addEventListener("click", submit);
+  [email, pw].forEach(function (el) {
+    el.addEventListener("keydown", function (ev) { if (ev.key === "Enter") submit(); });
+  });
+  $("#togglePw").addEventListener("click", function () {
+    var show = pw.type === "password";
+    pw.type = show ? "text" : "password";
+    this.textContent = show ? "Hide" : "Show";
+    this.setAttribute("aria-pressed", show ? "true" : "false");
+  });
+  $("#forgot").addEventListener("click", function () {
+    showNotice("info", "Forgot Password is not connected to Firebase password reset yet. It is a planned next step.");
+  });
+
+  /* ---------- Remember Me sync + inspector ---------- */
+  function renderInspector() {
+    var saved = getSaved();
+    $("#insPref").textContent = heroRemember.checked ? "on" : "off";
+    $("#insEmail").textContent = saved ? saved : "none";
+  }
+  function onRememberChange(source) {
+    heroRemember.checked = secRemember.checked = source.checked;
+    if (!source.checked) clearSaved();
+    renderInspector();
+  }
+  heroRemember.addEventListener("change", function () { onRememberChange(heroRemember); });
+  secRemember.addEventListener("change", function () { onRememberChange(secRemember); });
+
+  var restored = getSaved();
+  if (restored) {
+    email.value = restored;
+    heroRemember.checked = secRemember.checked = true;
+  }
+  renderRules();
+  renderInspector();
+
+  /* ---------- Flow tabs ---------- */
+  var steps = [
+    { name: "Enter credentials", body: "<p>The user types their email address and password into the login screen. The fields are Flutter <code>TextFormField</code> widgets inside a <code>Form</code>.</p>" },
+    { name: "Validate input", body: "<p>The app checks the email and password against the rules above. If a check fails, it shows a message and stops here. Firebase is never contacted with input that is empty, badly formatted or too short.</p>" },
+    { name: "Verify with Firebase", body: "<p>Firebase Authentication verifies the credentials through <code>signInWithEmailAndPassword()</code>. This is the step that decides whether the email and password belong to a real account.</p>" },
+    { name: "Show the result", body: null }
+  ];
+  var current = 0, outcome = "success";
+  var tabsEl = $("#flowTabs"), panel = $("#flowPanel");
+
+  steps.forEach(function (s, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "tab"; b.setAttribute("role", "tab");
+    b.id = "tab" + i; b.textContent = (i + 1) + ". " + s.name;
+    b.addEventListener("click", function () { current = i; renderFlow(); });
+    tabsEl.appendChild(b);
+  });
+
+  function renderFlow() {
+    $$("#flowTabs .tab").forEach(function (b, i) {
+      b.setAttribute("aria-selected", i === current ? "true" : "false");
+      b.tabIndex = i === current ? 0 : -1;
+    });
+    panel.setAttribute("aria-labelledby", "tab" + current);
+    if (steps[current].body) {
+      panel.innerHTML = steps[current].body;
+    } else {
+      panel.innerHTML =
+        '<div class="seg" role="group" aria-label="Outcome">' +
+        '<button type="button" data-o="success" aria-pressed="' + (outcome === "success") + '">Sign-in succeeds</button>' +
+        '<button type="button" data-o="fail" aria-pressed="' + (outcome === "fail") + '">Sign-in fails</button></div>' +
+        (outcome === "success"
+          ? "<p>The app displays a login success message. Navigation to the home screen is the next planned step.</p>"
+          : "<p>The app displays an appropriate error message. The screen handles invalid credentials, invalid email addresses, disabled accounts and excessive login attempts.</p>");
+      $$("#flowPanel [data-o]").forEach(function (b) {
+        b.addEventListener("click", function () { outcome = b.dataset.o; renderFlow(); });
+      });
+    }
+    $("#prevStep").disabled = current === 0;
+    $("#nextStep").disabled = current === steps.length - 1;
+  }
+  $("#prevStep").addEventListener("click", function () { if (current > 0) { current--; renderFlow(); } });
+  $("#nextStep").addEventListener("click", function () { if (current < steps.length - 1) { current++; renderFlow(); } });
+  tabsEl.addEventListener("keydown", function (ev) {
+    if (ev.key === "ArrowRight" && current < steps.length - 1) { current++; renderFlow(); $("#tab" + current).focus(); }
+    if (ev.key === "ArrowLeft" && current > 0) { current--; renderFlow(); $("#tab" + current).focus(); }
+  });
+  renderFlow();
+
+  /* ---------- Copy command ---------- */
+  $("#copyCmd").addEventListener("click", function () {
+    var btn = this, text = $("#cmdText").textContent;
+    function done() { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { btn.textContent = "Press Ctrl+C"; });
+    } else { btn.textContent = "Press Ctrl+C"; }
+  });
+
+  /* ---------- Status filter + progress ---------- */
+  var items = $$("#items li");
+  var done = items.filter(function (li) { return li.dataset.s === "done"; }).length;
+  $("#meterFill").style.width = Math.round(done / items.length * 100) + "%";
+  $("#count").textContent = done + " of " + items.length + " items done, " + (items.length - done) + " planned next";
+  $$(".seg [data-filter]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      $$(".seg [data-filter]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      items.forEach(function (li) { li.hidden = b.dataset.filter !== "all" && li.dataset.s !== b.dataset.filter; });
+    });
+  });
+
+  /* ---------- Side nav highlight ---------- */
+  var links = $$(".side a");
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          links.forEach(function (a) { a.removeAttribute("aria-current"); });
+          var a = map[en.target.id];
+          if (a) a.setAttribute("aria-current", "true");
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    $$("main section").forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
